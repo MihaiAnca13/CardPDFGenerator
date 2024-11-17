@@ -1,0 +1,21 @@
+{
+  "name" : "card-layout",
+  "version-string" : "1.0.0",
+  "builtin-baseline" : "435a9415ca61939ee0382f703009c440a8eae273",
+  "dependencies" : [ {
+    "name" : "libpng",
+    "version>=" : "1.6.44"
+  }, {
+    "name" : "vcpkg-cmake-config",
+    "version>=" : "2024-05-23"
+  }, {
+    "name" : "vcpkg-cmake",
+    "version>=" : "2024-04-23"
+  }, {
+    "name" : "zlib",
+    "version>=" : "1.3.1"
+  }, {
+    "name" : "libharu",
+    "version>=" : "2.4.4#1"
+  } ]
+}

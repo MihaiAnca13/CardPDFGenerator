@@ -1,0 +1,4 @@
+vcpkg_installed/
+cmake-build-debug/
+build/
+.idea
