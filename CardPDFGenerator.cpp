@@ -147,6 +147,7 @@ void CardPDFGenerator::addCardToPage(HPDF_Page page, const fs::path &imagePath, 
         float borderWidth = cardWidthPt + borderPt;
         float borderHeight = cardHeightPt + borderPt;
 
+        HPDF_Page_SetRGBStroke(page, settings_.borderColor.r, settings_.borderColor.g, settings_.borderColor.b);
         HPDF_Page_SetLineWidth(page, borderPt);
         HPDF_Page_Rectangle(page, borderX, borderY, borderWidth, borderHeight);
         HPDF_Page_Stroke(page);
