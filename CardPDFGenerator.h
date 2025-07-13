@@ -5,6 +5,8 @@
 #include <filesystem>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 namespace fs = std::filesystem;
 

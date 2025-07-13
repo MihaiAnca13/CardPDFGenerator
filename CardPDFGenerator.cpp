@@ -89,6 +89,15 @@ void CardPDFGenerator::validateSettings() const {
     float totalWidth = totalCardWidth * settings_.columns;
     float totalHeight = totalCardHeight * settings_.rows;
 
+    // if more than 1 column, don't count the bleed at each side
+    if (settings_.columns > 1) {
+        totalWidth -= (2 * settings_.bleed);
+    }
+    // if more than 1 row, don't count the bleed at the bottom and top
+    if (settings_.rows > 1) {
+        totalHeight -= (2 * settings_.bleed);
+    }
+
     if (totalWidth > settings_.pageWidth || totalHeight > settings_.pageHeight) {
         throw std::runtime_error("Cards don't fit on page with current settings");
     }
@@ -134,7 +143,19 @@ void CardPDFGenerator::addCardToPage(HPDF_Page page, const fs::path &imagePath, 
     float baseY = getGridStartY() - ((row + 1) * getTotalCardHeight());
 
     // Load image
-    HPDF_Image image = HPDF_LoadJpegImageFromFile(pdf_, imagePath.string().c_str());
+    HPDF_Image image = nullptr;
+    std::string ext = imagePath.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+
+    if (ext == ".jpg" || ext == ".jpeg") {
+        image = HPDF_LoadJpegImageFromFile(pdf_, imagePath.string().c_str());
+    } else if (ext == ".png") {
+        image = HPDF_LoadPngImageFromFile(pdf_, imagePath.string().c_str());
+    } else {
+        throw std::runtime_error("Unsupported image format: " + imagePath.string());
+    }
+
     if (!image) {
         throw std::runtime_error("Failed to load image: " + imagePath.string());
     }
@@ -216,4 +237,3 @@ float CardPDFGenerator::getGridStartY() const {
     float totalGridHeight = getTotalCardHeight() * settings_.rows;
     return pageHeightPt - ((pageHeightPt - totalGridHeight) / 2);
 }
-
