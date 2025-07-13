@@ -17,5 +17,8 @@
   }, {
     "name" : "libharu",
     "version>=" : "2.4.4#1"
+  }, {
+    "name" : "raylib",
+    "version>=" : "5.5"
   } ]
 }
