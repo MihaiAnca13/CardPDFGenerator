@@ -18,6 +18,7 @@
 #include <vector>
 #include <cstring> // Required for strlen
 #include <cstdio>  // Required for snprintf
+#include <map>
 
 // --- UI State & Helper Data ---
 struct UIState {
@@ -59,93 +60,91 @@ bool GuiButton(Clay_ElementId id, const char* text) {
 }
 
 // A more robust and visually correct slider for float values
-void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, bool rounded = false) {
-    constexpr int MAX_SLIDERS = 32;
-    static char valueTexts[MAX_SLIDERS][16];
+void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, UIState* uiState, bool rounded = false);
+void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int inputId, int* activeInputId, const char* format = "%.2f");
+
+void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, UIState* uiState, bool rounded) {
+    constexpr int MAX_SLIDERS = 64; // Increased for more complex UIs
     static int sliderIndex = 0;
 
-    // Use a different buffer for each slider, cycling through the array
-    char* currentText = valueTexts[sliderIndex];
-    snprintf(currentText, 16, "%.2f", *value);
-
-    const float sliderWidth = 200;
-    const float sliderHeight = 20;
-    const float handleWidth = 16;
-    const float handleHeight = 20;
+    // Use a different ID for the text input to avoid conflicts
+    Clay_ElementId textInputId = id;
+    textInputId.id += MAX_SLIDERS; // Offset the ID
 
     // Main container for the widget (Label + Slider + Value Text)
-    CLAY({.layout = {
-        .sizing = {.width = CLAY_SIZING_GROW()},
-        .childGap = 20,
-        .layoutDirection = CLAY_TOP_TO_BOTTOM,
-    }
+    CLAY({
+        .layout = {
+            .sizing = {.width = CLAY_SIZING_GROW()},
+            .childGap = 10,
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+        }
     }) {
-        // Label
         CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=16}));
 
-        // Interactive slider area (the track)
-        CLAY({
-            .id = id,
-            .layout = {.sizing = {CLAY_SIZING_FIXED(sliderWidth), CLAY_SIZING_FIXED(sliderHeight)}},
-            .backgroundColor = {220, 220, 220, 255}, // The track color
-            .cornerRadius = CLAY_CORNER_RADIUS(10)
-        }) {
-            // Check for interaction on the slider track
-            if (Clay_Hovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-                Clay_ElementData data = Clay_GetElementData(id);
-                if (data.found) {
-                    float mouseX = GetMousePosition().x;
-                    // Calculate the new value based on mouse position relative to the slider's bounding box
-                    float newPercent = (mouseX - data.boundingBox.x) / data.boundingBox.width;
-                    *value = min + newPercent * (max - min);
-                    // Clamp the value to the min/max range
-                    if (*value < min) *value = min;
-                    if (*value > max) *value = max;
-                    if (rounded)
-                        *value = roundf(*value); // Round
+        CLAY({.layout = {.childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
+            const float sliderWidth = 200;
+            const float sliderHeight = 20;
+            const float handleWidth = 16;
+            const float handleHeight = 20;
+
+            // Interactive slider area (the track)
+            CLAY({
+                .id = id,
+                .layout = {.sizing = {CLAY_SIZING_FIXED(sliderWidth), CLAY_SIZING_FIXED(sliderHeight)}},
+                .backgroundColor = {220, 220, 220, 255}, // The track color
+                .cornerRadius = CLAY_CORNER_RADIUS(10)
+            }) {
+                if (Clay_Hovered() && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+                    Clay_ElementData data = Clay_GetElementData(id);
+                    if (data.found) {
+                        float mouseX = GetMousePosition().x;
+                        float newPercent = (mouseX - data.boundingBox.x) / data.boundingBox.width;
+                        *value = min + newPercent * (max - min);
+                        if (*value < min) *value = min;
+                        if (*value > max) *value = max;
+                        if (rounded) *value = roundf(*value);
+                    }
                 }
-            }
 
-            float percent = (*value - min) / (max - min);
-            if (percent < 0) percent = 0;
-            if (percent > 1) percent = 1;
+                float percent = (*value - min) / (max - min);
+                if (percent < 0) percent = 0;
+                if (percent > 1) percent = 1;
 
-            // Filled part of the slider (blue progress bar)
-            if (percent > 0) {
-                 CLAY({
-                    .layout = {.sizing = {CLAY_SIZING_PERCENT(percent), CLAY_SIZING_GROW()}},
-                    .backgroundColor = {0, 121, 241, 255},
-                    .cornerRadius = CLAY_CORNER_RADIUS(10)
+                if (percent > 0) {
+                    CLAY({
+                        .layout = {.sizing = {CLAY_SIZING_PERCENT(percent), CLAY_SIZING_GROW()}},
+                        .backgroundColor = {0, 121, 241, 255},
+                        .cornerRadius = CLAY_CORNER_RADIUS(10)
+                    }) {}
+                }
+
+                CLAY({
+                    .layout = {.sizing = {CLAY_SIZING_FIXED(handleWidth), CLAY_SIZING_FIXED(handleHeight)}},
+                    .backgroundColor = {255, 255, 255, 255},
+                    .cornerRadius = CLAY_CORNER_RADIUS(8),
+                    .floating = {
+                        .offset = {percent * (sliderWidth - handleWidth), 0},
+                        .attachPoints = {.element = CLAY_ATTACH_POINT_LEFT_CENTER, .parent = CLAY_ATTACH_POINT_LEFT_CENTER},
+                        .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH,
+                        .attachTo = CLAY_ATTACH_TO_PARENT,
+                    },
+                    .border = {.color = {0, 121, 241, 255}, .width = {2, 2, 2, 2}}
                 }) {}
             }
 
-            // The draggable handle (purely visual, floats on top)
-            CLAY({
-                .layout = {.sizing = {CLAY_SIZING_FIXED(handleWidth), CLAY_SIZING_FIXED(handleHeight)}},
-                .backgroundColor = {255, 255, 255, 255},
-                .cornerRadius = CLAY_CORNER_RADIUS(8),
-                .floating = {
-                    .offset = {percent * (sliderWidth - handleWidth), 0},
-                    .attachPoints = {.element = CLAY_ATTACH_POINT_LEFT_CENTER, .parent = CLAY_ATTACH_POINT_LEFT_CENTER},
-                    .pointerCaptureMode = CLAY_POINTER_CAPTURE_MODE_PASSTHROUGH, // Clicks pass through to the track
-                    .attachTo = CLAY_ATTACH_TO_PARENT,
-                },
-                .border = {.color = {0, 121, 241, 255}, .width = {2, 2, 2, 2}}
-            }) {}
+            // The new float input field
+            GuiFloatInput(textInputId, value, min, max, (int)textInputId.id, &uiState->activeTextInput, rounded ? "%.0f" : "%.2f");
         }
-
-        // Display the current value as text
-        CLAY_TEXT(make_clay_string(currentText), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=16}));
     }
 
     sliderIndex = (sliderIndex + 1) % MAX_SLIDERS;
 }
 
-void GuiSliderInt(Clay_ElementId id, const char* text, int* value, float min, float max)
+void GuiSliderInt(Clay_ElementId id, const char* text, int* value, int min, int max, UIState* uiState)
 {
     auto v = static_cast<float>(*value);
-    GuiSliderFloat(id, text, &v, min, max, true);
-    *value = static_cast<int>(v);
+    GuiSliderFloat(id, text, &v, (float)min, (float)max, uiState, true);
+    *value = static_cast<int>(roundf(v));
 }
 
 // A polished Checkbox for boolean values
@@ -229,6 +228,84 @@ void GuiTextInput(Clay_ElementId id, const char* label, char* buffer, int buffer
     }
 }
 
+// A text input for float values. Manages its own buffer.
+void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int inputId, int* activeInputId, const char* format) {
+    static std::map<int, std::string> buffers;
+
+    bool isActive = (*activeInputId == inputId);
+    std::string& buffer = buffers[inputId]; // Get or create a persistent buffer for this input
+
+    // On first run or if the buffer is empty, initialize it with the current value.
+    if (buffer.empty() && !isActive) {
+        char temp[32];
+        snprintf(temp, sizeof(temp), format, *value);
+        buffer = temp;
+    }
+
+    // Deactivate and save value on Enter or click-away
+    if (isActive && (IsKeyPressed(KEY_ENTER) || (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && !Clay_PointerOver(id)))) {
+        *activeInputId = -1;
+        isActive = false;
+
+        // Parse, clamp, and save
+        float parsedValue = strtof(buffer.c_str(), nullptr);
+        if (parsedValue < min) parsedValue = min;
+        if (parsedValue > max) parsedValue = max;
+        *value = parsedValue;
+
+        // Update buffer to show the potentially clamped value
+        char temp[32];
+        snprintf(temp, sizeof(temp), format, *value);
+        buffer = temp;
+    }
+
+    // The input box
+    CLAY({
+        .id = id,
+        .layout = {.sizing = {CLAY_SIZING_FIXED(70), CLAY_SIZING_FIXED(25)}, .padding = {5, 5, 5, 5}},
+        .backgroundColor = {255, 255, 255, 255},
+        .cornerRadius = CLAY_CORNER_RADIUS(5),
+        .border = {.color = isActive ? (Clay_Color){0, 121, 241, 255} : (Clay_Color){200, 200, 200, 255}, .width = {1, 1, 1, 1}}
+    }) {
+        CLAY_TEXT(make_clay_string(buffer.c_str()), CLAY_TEXT_CONFIG({.textColor = {30, 30, 30, 255}, .fontSize = 14}));
+
+        // Activate on click, and if not already active, sync buffer with the authoritative value.
+        if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            if (!isActive) {
+                char temp[32];
+                snprintf(temp, sizeof(temp), format, *value);
+                buffer = temp;
+            }
+            *activeInputId = inputId;
+        }
+    }
+
+    // Handle key presses only when active
+    if (isActive) {
+        int key = GetCharPressed();
+        while (key > 0) {
+            // Allow numbers, decimal point, and negative sign
+            if ((key >= '0' && key <= '9') || key == '.' || key == '-') {
+                if (buffer.length() < 31) {
+                    buffer += (char)key;
+                }
+            }
+            key = GetCharPressed();
+        }
+
+        if (IsKeyPressedRepeat(KEY_BACKSPACE) || IsKeyPressed(KEY_BACKSPACE)) {
+            if (!buffer.empty()) {
+                buffer.pop_back();
+            }
+        }
+    }
+}
+
+
+// A text input for int values. Manages its own buffer.
+void GuiIntInput(Clay_ElementId id, int* value, int min, int max, int inputId, int* activeInputId) {
+    GuiFloatInput(id, (float*)value, (float)min, (float)max, inputId, activeInputId, "%.0f");
+}
 
 // --- Main Application ---
 int main() {
@@ -289,17 +366,17 @@ int main() {
                     }
                 }) {
                     CLAY_TEXT(CLAY_STRING("Page & Card Dimensions (mm)"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
-                    GuiSliderFloat(CLAY_ID("pageWidth"), "Page Width", &settings.pageWidth, 100.0f, 500.0f);
-                    GuiSliderFloat(CLAY_ID("pageHeight"), "Page Height", &settings.pageHeight, 100.0f, 500.0f);
-                    GuiSliderFloat(CLAY_ID("cardWidth"), "Card Width", &settings.cardWidth, 40.0f, 100.0f);
-                    GuiSliderFloat(CLAY_ID("cardHeight"), "Card Height", &settings.cardHeight, 60.0f, 120.0f);
-                    GuiSliderFloat(CLAY_ID("bleed"), "Bleed", &settings.bleed, 0.0f, 10.0f);
+                    GuiSliderFloat(CLAY_ID("pageWidth"), "Page Width", &settings.pageWidth, 100.0f, 500.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("pageHeight"), "Page Height", &settings.pageHeight, 100.0f, 500.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("cardWidth"), "Card Width", &settings.cardWidth, 40.0f, 100.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("cardHeight"), "Card Height", &settings.cardHeight, 60.0f, 120.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("bleed"), "Bleed", &settings.bleed, 0.0f, 10.0f, &uiState);
 
                     CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
 
                     CLAY_TEXT(CLAY_STRING("Grid Layout"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=20}));
-                    GuiSliderInt(CLAY_ID("rows"), "Rows", &settings.rows, 1, 10);
-                    GuiSliderInt(CLAY_ID("columns"), "Columns", &settings.columns, 1, 10);
+                    GuiSliderInt(CLAY_ID("rows"), "Rows", &settings.rows, 1, 10, &uiState);
+                    GuiSliderInt(CLAY_ID("columns"), "Columns", &settings.columns, 1, 10, &uiState);
                 }
 
                 // Right Column
@@ -312,16 +389,16 @@ int main() {
                 }) {
                     CLAY_TEXT(CLAY_STRING("Appearance"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
                     GuiCheckbox(CLAY_ID("showGuidelines"), "Show Guidelines", &settings.showGuideLines);
-                    GuiSliderFloat(CLAY_ID("guideLineWidth"), "Guide Width", &settings.guideLineWidth, 0.0f, 2.0f);
+                    GuiSliderFloat(CLAY_ID("guideLineWidth"), "Guide Width", &settings.guideLineWidth, 0.0f, 2.0f, &uiState);
                     GuiCheckbox(CLAY_ID("hasBorder"), "Has Border", &settings.hasBorder);
-                    GuiSliderFloat(CLAY_ID("borderWidth"), "Border Width", &settings.borderWidth, 0.0f, 10.0f);
+                    GuiSliderFloat(CLAY_ID("borderWidth"), "Border Width", &settings.borderWidth, 0.0f, 10.0f, &uiState);
 
                     CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
 
                     CLAY_TEXT(CLAY_STRING("Border Color (RGB)"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
-                    GuiSliderFloat(CLAY_ID("borderColorR"), "Red", &settings.borderColor.r, 0.0f, 1.0f);
-                    GuiSliderFloat(CLAY_ID("borderColorG"), "Green", &settings.borderColor.g, 0.0f, 1.0f);
-                    GuiSliderFloat(CLAY_ID("borderColorB"), "Blue", &settings.borderColor.b, 0.0f, 1.0f);
+                    GuiSliderFloat(CLAY_ID("borderColorR"), "Red", &settings.borderColor.r, 0.0f, 1.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("borderColorG"), "Green", &settings.borderColor.g, 0.0f, 1.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("borderColorB"), "Blue", &settings.borderColor.b, 0.0f, 1.0f, &uiState);
                 }
             }
 
