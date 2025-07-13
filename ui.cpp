@@ -51,7 +51,10 @@ bool GuiButton(Clay_ElementId id, const char* text) {
         .backgroundColor = Clay_Hovered() ? (Clay_Color){100, 180, 250, 255} : (Clay_Color){0, 121, 241, 255},
         .cornerRadius = CLAY_CORNER_RADIUS(5),
     }) {
-        CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({.textColor = {100, 20, 100, 255}, .fontSize = 20}));
+        CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({
+            .textColor = Clay_Hovered() ? (Clay_Color){100, 100, 100, 255} : (Clay_Color){220, 220, 220, 255},
+            .fontSize = 20
+        }));
         if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             clicked = true;
         }
@@ -235,8 +238,8 @@ void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int in
     bool isActive = (*activeInputId == inputId);
     std::string& buffer = buffers[inputId]; // Get or create a persistent buffer for this input
 
-    // On first run or if the buffer is empty, initialize it with the current value.
-    if (buffer.empty() && !isActive) {
+    // If the input is NOT active, it should always reflect the authoritative value from the slider.
+    if (!isActive) {
         char temp[32];
         snprintf(temp, sizeof(temp), format, *value);
         buffer = temp;
@@ -269,13 +272,8 @@ void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int in
     }) {
         CLAY_TEXT(make_clay_string(buffer.c_str()), CLAY_TEXT_CONFIG({.textColor = {30, 30, 30, 255}, .fontSize = 14}));
 
-        // Activate on click, and if not already active, sync buffer with the authoritative value.
+        // Activate on click. The buffer is already synced if not active, so we just set the ID.
         if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            if (!isActive) {
-                char temp[32];
-                snprintf(temp, sizeof(temp), format, *value);
-                buffer = temp;
-            }
             *activeInputId = inputId;
         }
     }
@@ -309,8 +307,8 @@ void GuiIntInput(Clay_ElementId id, int* value, int min, int max, int inputId, i
 
 // --- Main Application ---
 int main() {
-    const int screenWidth = 960; // Increased width for better layout
-    const int screenHeight = 1240; // Increased height
+    const int screenWidth = 900; // Increased width for better layout
+    const int screenHeight = 1050; // Increased height
 
     // --- Initialization ---
     Clay_Raylib_Initialize(screenWidth, screenHeight, "Card PDF Generator - UI", FLAG_WINDOW_RESIZABLE);
