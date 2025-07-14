@@ -28,6 +28,9 @@ void CardPDFGenerator::generatePDF(const std::string &outputPath, const std::str
         if (settings_.backMode == BackMode::SameBack) {
             if (fs::is_regular_file(backImagesPath)) {
                 backImages.emplace_back(backImagesPath);
+            } else
+            {
+                throw std::runtime_error("Invalid back image path.");
             }
         } else {
             backImages = getImageFiles(backImagesPath);
