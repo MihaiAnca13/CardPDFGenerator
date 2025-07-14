@@ -21,6 +21,11 @@
 #include <map>
 
 // --- UI State & Helper Data ---
+
+/**
+ * @struct UIState
+ * @brief Holds the current state of the UI, including input field values and status messages.
+ */
 struct UIState {
     char frontImagesPath[256] = "front_images/";
     char backImagesPath[256] = "back.jpg";
@@ -30,7 +35,11 @@ struct UIState {
     Color statusColor = LIME;
 };
 
-// Helper function to create a Clay_String from a C-style string variable.
+/**
+ * @brief Creates a Clay_String from a C-style string.
+ * @param c_str The null-terminated C-style string.
+ * @return A Clay_String instance.
+ */
 Clay_String make_clay_string(const char* c_str) {
     return (Clay_String){
         .isStaticallyAllocated = false,
@@ -40,9 +49,14 @@ Clay_String make_clay_string(const char* c_str) {
 }
 
 
-// --- Rewritten Custom UI Widgets using Clay ---
+// --- Custom UI Widgets ---
 
-// Simple Button Widget
+/**
+ * @brief Renders a clickable button.
+ * @param id The unique identifier for this element.
+ * @param text The text to display on the button.
+ * @return True if the button was clicked in the current frame, otherwise false.
+ */
 bool GuiButton(Clay_ElementId id, const char* text) {
     bool clicked = false;
     CLAY({
@@ -62,11 +76,20 @@ bool GuiButton(Clay_ElementId id, const char* text) {
     return clicked;
 }
 
-// A more robust and visually correct slider for float values
-void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, UIState* uiState, bool rounded = false);
+// Forward declaration for GuiSliderFloat
 void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int inputId, int* activeInputId, const char* format = "%.2f");
 
-void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, UIState* uiState, bool rounded) {
+/**
+ * @brief Renders a slider with a text input for a float value.
+ * @param id The unique identifier for this element.
+ * @param text The label to display for the slider.
+ * @param value A pointer to the float value to be modified.
+ * @param min The minimum value of the slider.
+ * @param max The maximum value of the slider.
+ * @param uiState A pointer to the global UI state.
+ * @param rounded If true, the value will be rounded to the nearest integer.
+ */
+void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min, float max, UIState* uiState, bool rounded = false) {
     constexpr int MAX_SLIDERS = 64; // Increased for more complex UIs
     static int sliderIndex = 0;
 
@@ -113,6 +136,7 @@ void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min
                 if (percent < 0) percent = 0;
                 if (percent > 1) percent = 1;
 
+                // The filled portion of the slider track
                 if (percent > 0) {
                     CLAY({
                         .layout = {.sizing = {CLAY_SIZING_PERCENT(percent), CLAY_SIZING_GROW()}},
@@ -121,6 +145,7 @@ void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min
                     }) {}
                 }
 
+                // The slider handle
                 CLAY({
                     .layout = {.sizing = {CLAY_SIZING_FIXED(handleWidth), CLAY_SIZING_FIXED(handleHeight)}},
                     .backgroundColor = {255, 255, 255, 255},
@@ -135,7 +160,7 @@ void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min
                 }) {}
             }
 
-            // The new float input field
+            // The float input field paired with the slider
             GuiFloatInput(textInputId, value, min, max, (int)textInputId.id, &uiState->activeTextInput, rounded ? "%.0f" : "%.2f");
         }
     }
@@ -143,6 +168,16 @@ void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min
     sliderIndex = (sliderIndex + 1) % MAX_SLIDERS;
 }
 
+/**
+ * @brief Renders a slider for an integer value.
+ * This is a wrapper around GuiSliderFloat.
+ * @param id The unique identifier for this element.
+ * @param text The label to display for the slider.
+ * @param value A pointer to the integer value to be modified.
+ * @param min The minimum value of the slider.
+ * @param max The maximum value of the slider.
+ * @param uiState A pointer to the global UI state.
+ */
 void GuiSliderInt(Clay_ElementId id, const char* text, int* value, int min, int max, UIState* uiState)
 {
     auto v = static_cast<float>(*value);
@@ -150,7 +185,12 @@ void GuiSliderInt(Clay_ElementId id, const char* text, int* value, int min, int 
     *value = static_cast<int>(roundf(v));
 }
 
-// A polished Checkbox for boolean values
+/**
+ * @brief Renders a checkbox for a boolean value.
+ * @param id The unique identifier for this element.
+ * @param text The label to display next to the checkbox.
+ * @param value A pointer to the boolean value to be modified.
+ */
 void GuiCheckbox(Clay_ElementId id, const char* text, bool* value) {
     CLAY({.layout = {.childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
         // The interactive checkbox square
@@ -178,7 +218,15 @@ void GuiCheckbox(Clay_ElementId id, const char* text, bool* value) {
     }
 }
 
-// A more robust text input field
+/**
+ * @brief Renders a text input field.
+ * @param id The unique identifier for this element.
+ * @param label The label to display for the input field.
+ * @param buffer The character buffer to store the text.
+ * @param bufferSize The size of the buffer.
+ * @param inputId A unique integer ID for this specific input field.
+ * @param activeInputId A pointer to the integer that stores the ID of the currently active input field.
+ */
 void GuiTextInput(Clay_ElementId id, const char* label, char* buffer, int bufferSize, int inputId, int* activeInputId) {
     bool isActive = (*activeInputId == inputId);
 
@@ -231,7 +279,17 @@ void GuiTextInput(Clay_ElementId id, const char* label, char* buffer, int buffer
     }
 }
 
-// A text input for float values. Manages its own buffer.
+/**
+ * @brief Renders a text input field for a float value.
+ * Manages its own internal string buffer.
+ * @param id The unique identifier for this element.
+ * @param value A pointer to the float value to be modified.
+ * @param min The minimum allowed value.
+ * @param max The maximum allowed value.
+ * @param inputId A unique integer ID for this specific input field.
+ * @param activeInputId A pointer to the integer that stores the ID of the currently active input field.
+ * @param format The printf-style format string for displaying the float.
+ */
 void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int inputId, int* activeInputId, const char* format) {
     static std::map<int, std::string> buffers;
 
@@ -299,8 +357,16 @@ void GuiFloatInput(Clay_ElementId id, float* value, float min, float max, int in
     }
 }
 
-
-// A text input for int values. Manages its own buffer.
+/**
+ * @brief Renders a text input for an integer value.
+ * This is a wrapper around GuiFloatInput.
+ * @param id The unique identifier for this element.
+ * @param value A pointer to the integer value to be modified.
+ * @param min The minimum allowed value.
+ * @param max The maximum allowed value.
+ * @param inputId A unique integer ID for this specific input field.
+ * @param activeInputId A pointer to the integer that stores the ID of the currently active input field.
+ */
 void GuiIntInput(Clay_ElementId id, int* value, int min, int max, int inputId, int* activeInputId) {
     GuiFloatInput(id, (float*)value, (float)min, (float)max, inputId, activeInputId, "%.0f");
 }
@@ -328,6 +394,7 @@ int main() {
 
     // --- Main Loop ---
     while (!WindowShouldClose()) {
+        // Update Clay layout and input state
         Clay_SetLayoutDimensions((Clay_Dimensions){(float)GetScreenWidth(), (float)GetScreenHeight()});
         Clay_SetPointerState(RAYLIB_VECTOR2_TO_CLAY_VECTOR2(GetMousePosition()), IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         Clay_UpdateScrollContainers(true, RAYLIB_VECTOR2_TO_CLAY_VECTOR2(GetMouseWheelMoveV()), GetFrameTime());
@@ -335,7 +402,7 @@ int main() {
         Clay_BeginLayout();
 
         // --- UI Declaration ---
-        CLAY({
+        CLAY({ // Root container
             .layout = {
                 .sizing = CLAY_SIZING_GROW(),
                 .padding = CLAY_PADDING_ALL(24),
@@ -346,7 +413,8 @@ int main() {
         }) {
             CLAY_TEXT(CLAY_STRING("Card PDF Generator Settings"), CLAY_TEXT_CONFIG({.textColor={80,80,80,255}, .fontSize=28}));
             CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(EL_SPACE)}}}){}; // Spacer
-            // --- Main container for the two columns ---
+            
+            // Main container for the two settings columns
             CLAY({
                 .layout = {
                     .sizing = CLAY_SIZING_GROW(),
@@ -355,7 +423,7 @@ int main() {
                 }
             }) {
 
-                // Left Column
+                // Left Column: Page and Card Dimensions
                 CLAY({
                     .layout = {
                         .sizing = {CLAY_SIZING_PERCENT(0.5)},
@@ -377,7 +445,7 @@ int main() {
                     GuiSliderInt(CLAY_ID("columns"), "Columns", &settings.columns, 1, 10, &uiState);
                 }
 
-                // Right Column
+                // Right Column: Appearance and Color
                 CLAY({
                     .layout = {
                         .sizing = {CLAY_SIZING_PERCENT(0.5)},
@@ -399,6 +467,8 @@ int main() {
                     GuiSliderFloat(CLAY_ID("borderColorB"), "Blue", &settings.borderColor.b, 0.0f, 1.0f, &uiState);
                 }
             }
+
+            CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(EL_SPACE)}}}){}; // Spacer
 
             // --- Back Mode & File Paths Section ---
             CLAY({
