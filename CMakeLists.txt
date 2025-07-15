@@ -21,6 +21,8 @@ add_executable(
 #        main.cpp
         CardPDFGenerator.cpp
         ui.cpp
+        card_utils.cpp
+        card_utils.h
 )
 
 target_link_libraries(card_layout PRIVATE unofficial::libharu::hpdf)

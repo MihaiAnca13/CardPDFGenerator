@@ -10,6 +10,7 @@
 #include "clay.h"
 #include "renderers/raylib/clay_renderer_raylib.c"
 #include "clay_utils.h"
+#include "card_utils.h"
 
 #include "CardPDFGenerator.h"
 #include "settings_io.h"
@@ -32,6 +33,9 @@ struct UIState {
     char outputPath[256] = "output.pdf";
     int activeTextInput = -1; // -1 for none, 0 for front, 1 for back, 2 for output
     char statusMessage[256] = "Ready";
+    char duplicateSourcePath[256] = "source/";
+    char duplicateDestinationPath[256] = "copies/";
+    int duplicateCount = 2;
     Color statusColor = LIME;
 };
 
@@ -101,13 +105,14 @@ void GuiSliderFloat(Clay_ElementId id, const char* text, float* value, float min
     CLAY({
         .layout = {
             .sizing = {.width = CLAY_SIZING_GROW()},
+            .padding = {0, 0, 10, 0},
             .childGap = 10,
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
         }
     }) {
         CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=16}));
 
-        CLAY({.layout = {.childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
+        CLAY({.layout = {.padding = {0, 10, 10, 0}, .childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
             const float sliderWidth = 200;
             const float sliderHeight = 20;
             const float handleWidth = 16;
@@ -192,7 +197,7 @@ void GuiSliderInt(Clay_ElementId id, const char* text, int* value, int min, int 
  * @param value A pointer to the boolean value to be modified.
  */
 void GuiCheckbox(Clay_ElementId id, const char* text, bool* value) {
-    CLAY({.layout = {.childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
+    CLAY({.layout = {.padding = {0, 0, 10, 0}, .childGap = 10, .childAlignment = {.y = CLAY_ALIGN_Y_CENTER}}}) {
         // The interactive checkbox square
         CLAY({
             .id = id,
@@ -213,8 +218,12 @@ void GuiCheckbox(Clay_ElementId id, const char* text, bool* value) {
                 *value = !*value;
             }
         }
-        // The label next to the checkbox
-        CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({.textColor = {100, 100, 100, 255}, .fontSize = 16}));
+        CLAY({
+            .layout = {.padding = {0, 0, 0, 15}}
+        }) {
+            // The label next to the checkbox
+            CLAY_TEXT(make_clay_string(text), CLAY_TEXT_CONFIG({.textColor = {100, 100, 100, 255}, .fontSize = 16}));
+        }
     }
 }
 
@@ -427,7 +436,7 @@ int main() {
                 CLAY({
                     .layout = {
                         .sizing = {CLAY_SIZING_PERCENT(0.5)},
-                        .childGap = 25,
+                        .childGap = 10,
                         .layoutDirection = CLAY_TOP_TO_BOTTOM
                     }
                 }) {
@@ -443,13 +452,41 @@ int main() {
                     CLAY_TEXT(CLAY_STRING("Grid Layout"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=20}));
                     GuiSliderInt(CLAY_ID("rows"), "Rows", &settings.rows, 1, 10, &uiState);
                     GuiSliderInt(CLAY_ID("columns"), "Columns", &settings.columns, 1, 10, &uiState);
+
+                    // --- Back Mode & File Paths Section ---
+                    CLAY({
+                        .layout = {
+                            .sizing = CLAY_SIZING_GROW(),
+                            .padding = {.top = 20},
+                            .childGap = 25,
+                            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                        }
+                    }) {
+                        CLAY_TEXT(CLAY_STRING("Card Back Options"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
+                        CLAY({.layout = {.childGap = 10}}) {
+                            bool noBack = settings.backMode == CardPDFGenerator::BackMode::NoBack;
+                            if (GuiButton(CLAY_ID("noBack"), noBack ? "[ No Back ]" : "No Back")) settings.backMode = CardPDFGenerator::BackMode::NoBack;
+
+                            bool sameBack = settings.backMode == CardPDFGenerator::BackMode::SameBack;
+                            if (GuiButton(CLAY_ID("sameBack"), sameBack ? "[ Same Back ]" : "Same Back")) settings.backMode = CardPDFGenerator::BackMode::SameBack;
+
+                            bool uniqueBack = settings.backMode == CardPDFGenerator::BackMode::UniqueBack;
+                            if (GuiButton(CLAY_ID("uniqueBack"), uniqueBack ? "[ Unique Backs ]" : "Unique Backs")) settings.backMode = CardPDFGenerator::BackMode::UniqueBack;
+                        }
+
+                        CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
+
+                        GuiTextInput(CLAY_ID("frontPathInput"), "Front Images Path", uiState.frontImagesPath, 256, 0, &uiState.activeTextInput);
+                        GuiTextInput(CLAY_ID("backPathInput"), "Back Image Path", uiState.backImagesPath, 256, 1, &uiState.activeTextInput);
+                        GuiTextInput(CLAY_ID("outputPathInput"), "Output PDF Path", uiState.outputPath, 256, 2, &uiState.activeTextInput);
+                    }
                 }
 
                 // Right Column: Appearance and Color
                 CLAY({
                     .layout = {
                         .sizing = {CLAY_SIZING_PERCENT(0.5)},
-                        .childGap = 25,
+                        .childGap = 15,
                         .layoutDirection = CLAY_TOP_TO_BOTTOM
                     }
                 }) {
@@ -465,38 +502,28 @@ int main() {
                     GuiSliderFloat(CLAY_ID("borderColorR"), "Red", &settings.borderColor.r, 0.0f, 1.0f, &uiState);
                     GuiSliderFloat(CLAY_ID("borderColorG"), "Green", &settings.borderColor.g, 0.0f, 1.0f, &uiState);
                     GuiSliderFloat(CLAY_ID("borderColorB"), "Blue", &settings.borderColor.b, 0.0f, 1.0f, &uiState);
+
+                    CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
+
+                    CLAY_TEXT(CLAY_STRING("Duplicate cards"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
+                    GuiSliderInt(CLAY_ID("duplicateRows"), "Count", &uiState.duplicateCount, 1, 100, &uiState);
+                    GuiTextInput(CLAY_ID("duplicateSourcePath"), "Source Path", uiState.duplicateSourcePath, 256, 3, &uiState.activeTextInput);
+                    GuiTextInput(CLAY_ID("duplicateDestinationPath"), "Destination Path", uiState.duplicateDestinationPath, 256, 3, &uiState.activeTextInput);
+                    if (GuiButton(CLAY_ID("duplicateButton"), "Duplicate")) {
+                        try
+                        {
+                            duplicate_cards(uiState.duplicateSourcePath, uiState.duplicateDestinationPath, uiState.duplicateCount);
+                            snprintf(uiState.statusMessage, sizeof(uiState.statusMessage), "Duplication complete!");
+                            uiState.statusColor = LIME;
+                        } catch (const std::exception& e) {
+                            snprintf(uiState.statusMessage, sizeof(uiState.statusMessage), "Error: %s", e.what());
+                            uiState.statusColor = RED;
+                        }
+                    }
                 }
             }
 
             CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(EL_SPACE)}}}){}; // Spacer
-
-            // --- Back Mode & File Paths Section ---
-            CLAY({
-                .layout = {
-                    .sizing = CLAY_SIZING_GROW(),
-                    .padding = {.top = 20},
-                    .childGap = 25,
-                    .layoutDirection = CLAY_TOP_TO_BOTTOM,
-                }
-            }) {
-                CLAY_TEXT(CLAY_STRING("Card Back Options"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
-                CLAY({.layout = {.childGap = 20}}) {
-                    bool noBack = settings.backMode == CardPDFGenerator::BackMode::NoBack;
-                    if (GuiButton(CLAY_ID("noBack"), noBack ? "[ No Back ]" : "No Back")) settings.backMode = CardPDFGenerator::BackMode::NoBack;
-
-                    bool sameBack = settings.backMode == CardPDFGenerator::BackMode::SameBack;
-                    if (GuiButton(CLAY_ID("sameBack"), sameBack ? "[ Same Back ]" : "Same Back")) settings.backMode = CardPDFGenerator::BackMode::SameBack;
-
-                    bool uniqueBack = settings.backMode == CardPDFGenerator::BackMode::UniqueBack;
-                    if (GuiButton(CLAY_ID("uniqueBack"), uniqueBack ? "[ Unique Backs ]" : "Unique Backs")) settings.backMode = CardPDFGenerator::BackMode::UniqueBack;
-                }
-
-                CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
-
-                GuiTextInput(CLAY_ID("frontPathInput"), "Front Images Path", uiState.frontImagesPath, 256, 0, &uiState.activeTextInput);
-                GuiTextInput(CLAY_ID("backPathInput"), "Back Image Path", uiState.backImagesPath, 256, 1, &uiState.activeTextInput);
-                GuiTextInput(CLAY_ID("outputPathInput"), "Output PDF Path", uiState.outputPath, 256, 2, &uiState.activeTextInput);
-            }
 
             // --- Action Buttons & Status ---
             CLAY({.layout={.sizing={.height=CLAY_SIZING_GROW(0)}}}){}; // Spacer to push to bottom
