@@ -16,7 +16,6 @@
 #include "settings_io.h"
 
 #include <string>
-#include <vector>
 #include <cstring> // Required for strlen
 #include <cstdio>  // Required for snprintf
 #include <map>
@@ -421,7 +420,7 @@ int main() {
             .backgroundColor = {245, 245, 245, 255}
         }) {
             CLAY_TEXT(CLAY_STRING("Card PDF Generator Settings"), CLAY_TEXT_CONFIG({.textColor={80,80,80,255}, .fontSize=28}));
-            CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(EL_SPACE)}}}){}; // Spacer
+            CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(1)}}}){}; // Spacer
             
             // Main container for the two settings columns
             CLAY({
@@ -523,7 +522,7 @@ int main() {
                 }
             }
 
-            CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(EL_SPACE)}}}){}; // Spacer
+            CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(1)}}}){}; // Spacer
 
             // --- Action Buttons & Status ---
             CLAY({.layout={.sizing={.height=CLAY_SIZING_GROW(0)}}}){}; // Spacer to push to bottom

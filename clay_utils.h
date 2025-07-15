@@ -6,8 +6,6 @@
 #include "clay.h"
 #include "raylib.h"
 
-#define EL_SPACE 0.1f
-
 // Helper function to convert a raylib Color to a Clay_Color
 static inline Clay_Color ToClayColor(const Color& color) {
     return {
