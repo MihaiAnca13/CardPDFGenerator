@@ -48,3 +48,7 @@ If you have any questions, suggestions, or feedback, please don't hesitate to re
 - GitHub: [@MihaiAnca13](https://github.com/MihaiAnca13)
 - Email: [Mihai Anca](mailto:41regdzqx@mozmail.com)
 
+## Extra
+
+As a bonus, I've included the `copies.py` script that allows you to make copies of images, while converting them to CMYK colour format.  
+You can use it as a cli tool. Just run `python copies.py --help` to see the options. Make sure you install the requirements first.  
