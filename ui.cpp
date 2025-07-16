@@ -440,10 +440,10 @@ int main() {
                     }
                 }) {
                     CLAY_TEXT(CLAY_STRING("Page & Card Dimensions (mm)"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
-                    GuiSliderFloat(CLAY_ID("pageWidth"), "Page Width", &settings.pageWidth, 100.0f, 500.0f, &uiState);
-                    GuiSliderFloat(CLAY_ID("pageHeight"), "Page Height", &settings.pageHeight, 100.0f, 500.0f, &uiState);
-                    GuiSliderFloat(CLAY_ID("cardWidth"), "Card Width", &settings.cardWidth, 40.0f, 100.0f, &uiState);
-                    GuiSliderFloat(CLAY_ID("cardHeight"), "Card Height", &settings.cardHeight, 60.0f, 120.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("pageWidth"), "Page Width", &settings.pageWidth, 5.0f, 500.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("pageHeight"), "Page Height", &settings.pageHeight, 5.0f, 500.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("cardWidth"), "Card Width", &settings.cardWidth, 5.0f, 320.0f, &uiState);
+                    GuiSliderFloat(CLAY_ID("cardHeight"), "Card Height", &settings.cardHeight, 5.0f, 650.0f, &uiState);
                     GuiSliderFloat(CLAY_ID("bleed"), "Bleed", &settings.bleed, 0.0f, 10.0f, &uiState);
 
                     CLAY({.layout={.sizing={.height=CLAY_SIZING_FIXED(5)}}}){}; // Spacer
@@ -507,7 +507,7 @@ int main() {
                     CLAY_TEXT(CLAY_STRING("Duplicate cards"), CLAY_TEXT_CONFIG({.textColor={100,100,100,255}, .fontSize=18}));
                     GuiSliderInt(CLAY_ID("duplicateRows"), "Count", &uiState.duplicateCount, 1, 100, &uiState);
                     GuiTextInput(CLAY_ID("duplicateSourcePath"), "Source Path", uiState.duplicateSourcePath, 256, 3, &uiState.activeTextInput);
-                    GuiTextInput(CLAY_ID("duplicateDestinationPath"), "Destination Path", uiState.duplicateDestinationPath, 256, 3, &uiState.activeTextInput);
+                    GuiTextInput(CLAY_ID("duplicateDestinationPath"), "Destination Path", uiState.duplicateDestinationPath, 256, 4, &uiState.activeTextInput);
                     if (GuiButton(CLAY_ID("duplicateButton"), "Duplicate")) {
                         try
                         {
